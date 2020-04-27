@@ -29,4 +29,21 @@ fi
 make hdr-check ||
 exit 1
 
+( make sparse 3>&2 2>&1 >&3 ) |
+while IFS= read -r line
+do
+	case "$line" in
+	GIT_VERSION*|"*new * flags") continue ;;
+	esac
+	filename="${line%%:*}"
+	linum="${line#*:}"
+	linum="${linum%%:*}"
+	# ignore false positive struct foo val = { 0 }
+	# need to look into file since `type *p = 0` has the same warning
+	if ! sed -n "${linum}{p;q}" "$filename" | grep -q '= *{ *0 *}'
+	then
+		echo "$line"
+	fi
+done | grep . && exit 1
+
 save_good_tree
